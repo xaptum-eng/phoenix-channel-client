@@ -422,6 +422,7 @@ defmodule PhoenixChannelClient do
     |> Flow.run()
     {:noreply, state};
     {:error, decoding_error} -> handle_proto(text, state)
+    end
   end
 
   def handle_info(:close, state) do
@@ -463,7 +464,7 @@ defmodule PhoenixChannelClient do
    defp handle_proto(proto, state) do
        IO.inspect(state.subscriptions, label: "SUBSCRIPTIONS")
           Enum.each(state.subscriptions,
-              fn %{name => %PhoenixChannelClient.Subscription{ pid: pid } } -> send pid, proto end)
+              fn {name, %PhoenixChannelClient.Subscription{ pid: pid }} -> send pid, proto end)
       {:noreply, state}
     end
 end
