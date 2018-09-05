@@ -391,39 +391,39 @@ defmodule PhoenixChannelClient do
     {:noreply, state}
   end
 
-  def handle_info({:proto, proto}, state) do
+  def handle_info({:text, proto}, state) do
     Enum.each(state.subscriptions, fn pid -> send pid, proto end)
     {:noreply, state}
   end
-  def handle_info({:text, json}, state) do
-    %{
-      "event" => event,
-      "topic" => topic,
-      "payload" => payload,
-      "ref" => ref
-    } = Poison.decode!(json)
-    obj = %{
-      event: event,
-      topic: topic,
-      payload: payload,
-      ref: ref
-    }
-    filter = fn {_key, %Subscription{matcher: matcher}} ->
-      matcher.(obj)
-    end
-    mapper = fn {_key, %Subscription{pid: pid, mapper: mapper}} ->
-      {pid, mapper.(obj)}
-    end
-    sender = fn {pid, message} ->
-      send pid, message
-    end
-    state.subscriptions
-    |> Flow.from_enumerable()
-    |> Flow.filter_map(filter, mapper)
-    |> Flow.each(sender)
-    |> Flow.run()
-    {:noreply, state}
-  end
+#  def handle_info({:text, json}, state) do
+#    %{
+#      "event" => event,
+#      "topic" => topic,
+#      "payload" => payload,
+#      "ref" => ref
+#    } = Poison.decode!(json)
+#    obj = %{
+#      event: event,
+#      topic: topic,
+#      payload: payload,
+#      ref: ref
+#    }
+#    filter = fn {_key, %Subscription{matcher: matcher}} ->
+#      matcher.(obj)
+#    end
+#    mapper = fn {_key, %Subscription{pid: pid, mapper: mapper}} ->
+#      {pid, mapper.(obj)}
+#    end
+#    sender = fn {pid, message} ->
+#      send pid, message
+#    end
+#    state.subscriptions
+#    |> Flow.from_enumerable()
+#    |> Flow.filter_map(filter, mapper)
+#    |> Flow.each(sender)
+#    |> Flow.run()
+#    {:noreply, state}
+#  end
 
   def handle_info(:close, state) do
     ensure_loop_killed(state)
