@@ -392,7 +392,9 @@ defmodule PhoenixChannelClient do
   end
 
   def handle_info({:text, proto}, state) do
-    Enum.each(state.subscriptions, fn pid -> send pid, proto end)
+     IO.inspect(state.subscriptions, label: "SUBSCRIPTIONS")
+        Enum.each(state.subscriptions,
+            fn %{name => %PhoenixChannelClient.Subscription{ pid: pid } } -> send pid, proto end)
     {:noreply, state}
   end
 #  def handle_info({:text, json}, state) do
