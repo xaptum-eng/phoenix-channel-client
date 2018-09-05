@@ -38,8 +38,6 @@ defmodule PhoenixChannelClient do
   ```
   """
 
-  alias Phoenix.Transports.WebSocketSerializer
-
   use GenServer
 
   defmodule Channel do
@@ -393,14 +391,17 @@ defmodule PhoenixChannelClient do
     {:noreply, state}
   end
 
-  def handle_info({:text, text}, state) do
-    %Phoenix.Socket.Message{
-        topic: topic,
-        event: event,
-        payload: payload,
-        ref: ref,
-        join_ref: jref,
-      } = WebSocketSerializer.decode!(text, [])
+  def handle_info({:proto, proto}, state) do
+    Enum.each(state.subscriptions, fn pid -> send pid, proto end)
+    {:noreply, state}
+  end
+  def handle_info({:text, json}, state) do
+    %{
+      "event" => event,
+      "topic" => topic,
+      "payload" => payload,
+      "ref" => ref
+    } = Poison.decode!(json)
     obj = %{
       event: event,
       topic: topic,
