@@ -38,6 +38,8 @@ defmodule PhoenixChannelClient do
   ```
   """
 
+  alias Phoenix.Transports.WebSocketSerializer
+
   use GenServer
 
   defmodule Channel do
@@ -238,15 +240,30 @@ defmodule PhoenixChannelClient do
   end
 
   defp do_push(channel, event, payload, ref) do
-    obj = %{
-      topic: channel.topic,
-      event: event,
-      payload: payload,
-      ref: ref
-    }
-    json = Poison.encode!(obj)
-    socket = GenServer.call(channel.socket.server_name, :socket)
-    WebSocket.send(socket, {:text, json})
+
+     obj = %{
+        topic: channel.topic,
+        event: event,
+        payload: payload,
+        ref: ref
+      }
+      json = Poison.encode!(obj)
+      socket = GenServer.call(channel.socket.server_name, :socket)
+      WebSocket.send(socket, {:text, json})
+#     IO.inspect(channel, label: "CHANNEL")
+#     IO.inspect(event, label: "EVENT")
+#     IO.inspect(payload, label: "PAYLOAD")
+#     msg = %Phoenix.Socket.Message{
+#          topic: channel.topic,
+#          event: event,
+#          payload: payload,
+#          ref: ref,
+#          join_ref: ref,
+#        }
+#    text = WebSocketSerializer.encode!(msg)
+#    IO.inspect(text, label: "WebSocketSerialized Message")
+#    socket = GenServer.call(channel.socket.server_name, :socket)
+#    WebSocket.send(socket, {:text, text})
   end
 
   defp subscribe(name, key, matcher, mapper) do
@@ -391,13 +408,14 @@ defmodule PhoenixChannelClient do
     {:noreply, state}
   end
 
-  def handle_info({:text, json}, state) do
-    %{
-      "event" => event,
-      "topic" => topic,
-      "payload" => payload,
-      "ref" => ref
-    } = Poison.decode!(json)
+  def handle_info({:text, text}, state) do
+    %Phoenix.Socket.Message{
+        topic: topic,
+        event: event,
+        payload: payload,
+        ref: ref,
+        join_ref: jref,
+      } = WebSocketSerializer.decode!(text, [])
     obj = %{
       event: event,
       topic: topic,
