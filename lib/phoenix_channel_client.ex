@@ -391,41 +391,38 @@ defmodule PhoenixChannelClient do
     {:noreply, state}
   end
 
-  def handle_info({:text, proto}, state) do
-     IO.inspect(state.subscriptions, label: "SUBSCRIPTIONS")
-        Enum.each(state.subscriptions,
-            fn %{name => %PhoenixChannelClient.Subscription{ pid: pid } } -> send pid, proto end)
-    {:noreply, state}
+
+  def handle_info({:text, text}, state) do
+    case Poison.decode(text) do
+        {:ok, %{
+          "event" => event,
+          "topic" => topic,
+          "payload" => payload,
+          "ref" => ref
+        }} ->
+    obj = %{
+      event: event,
+      topic: topic,
+      payload: payload,
+      ref: ref
+    }
+    filter = fn {_key, %Subscription{matcher: matcher}} ->
+      matcher.(obj)
+    end
+    mapper = fn {_key, %Subscription{pid: pid, mapper: mapper}} ->
+      {pid, mapper.(obj)}
+    end
+    sender = fn {pid, message} ->
+      send pid, message
+    end
+    state.subscriptions
+    |> Flow.from_enumerable()
+    |> Flow.filter_map(filter, mapper)
+    |> Flow.each(sender)
+    |> Flow.run()
+    {:noreply, state};
+    {:error, decoding_error} -> handle_proto(text, state)
   end
-#  def handle_info({:text, json}, state) do
-#    %{
-#      "event" => event,
-#      "topic" => topic,
-#      "payload" => payload,
-#      "ref" => ref
-#    } = Poison.decode!(json)
-#    obj = %{
-#      event: event,
-#      topic: topic,
-#      payload: payload,
-#      ref: ref
-#    }
-#    filter = fn {_key, %Subscription{matcher: matcher}} ->
-#      matcher.(obj)
-#    end
-#    mapper = fn {_key, %Subscription{pid: pid, mapper: mapper}} ->
-#      {pid, mapper.(obj)}
-#    end
-#    sender = fn {pid, message} ->
-#      send pid, message
-#    end
-#    state.subscriptions
-#    |> Flow.from_enumerable()
-#    |> Flow.filter_map(filter, mapper)
-#    |> Flow.each(sender)
-#    |> Flow.run()
-#    {:noreply, state}
-#  end
 
   def handle_info(:close, state) do
     ensure_loop_killed(state)
@@ -461,4 +458,12 @@ defmodule PhoenixChannelClient do
     end
     reason
   end
+
+
+   defp handle_proto(proto, state) do
+       IO.inspect(state.subscriptions, label: "SUBSCRIPTIONS")
+          Enum.each(state.subscriptions,
+              fn %{name => %PhoenixChannelClient.Subscription{ pid: pid } } -> send pid, proto end)
+      {:noreply, state}
+    end
 end
