@@ -240,7 +240,6 @@ defmodule PhoenixChannelClient do
   end
 
   defp do_push(channel, event, payload, ref) do
-
      obj = %{
         topic: channel.topic,
         event: event,
@@ -250,20 +249,6 @@ defmodule PhoenixChannelClient do
       json = Poison.encode!(obj)
       socket = GenServer.call(channel.socket.server_name, :socket)
       WebSocket.send(socket, {:text, json})
-#     IO.inspect(channel, label: "CHANNEL")
-#     IO.inspect(event, label: "EVENT")
-#     IO.inspect(payload, label: "PAYLOAD")
-#     msg = %Phoenix.Socket.Message{
-#          topic: channel.topic,
-#          event: event,
-#          payload: payload,
-#          ref: ref,
-#          join_ref: ref,
-#        }
-#    text = WebSocketSerializer.encode!(msg)
-#    IO.inspect(text, label: "WebSocketSerialized Message")
-#    socket = GenServer.call(channel.socket.server_name, :socket)
-#    WebSocket.send(socket, {:text, text})
   end
 
   defp subscribe(name, key, matcher, mapper) do
